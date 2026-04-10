@@ -6,16 +6,16 @@ An AI-powered professional tool to optimize and correct Bengali subtitle (SRT) f
 [![GitHub stars](https://img.shields.io/github/stars/muntasirrmahdi/bangla-srt-optimizer)](https://github.com/muntasirrmahdi/bangla-srt-optimizer/stargazers)
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
 
-## 🎯 The Problem
+##  The Problem
 Manual correction of Bengali podcast subtitles can take 3-4 hours per episode due to phonetic errors, spelling mistakes, and contextual nuances (e.g., "উট" vs "উড"). This tool reduces that work to minutes while ensuring 100% timestamp integrity.
 
-## ✨ Features
+##  Features
 - **Contextual Intelligence**: Detects and fixes industry-specific terms (e.g., Furniture/Metal industry context).
 - **1:1 Timestamp Mapping**: Proprietary segment tagging (`SEG_n`) prevents AI from merging lines, ensuring zero drift.
 - **Hybrid Correction Engine**: Combines hardcoded linguistic rules with LLM reasoning for maximum accuracy.
 - **Privacy-First**: Your proprietary correction rules can be kept locally while using the shared engine.
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### 1. Setup Environment
 ```bash
@@ -38,7 +38,7 @@ Edit `.env` and add your `GEMINI_API_KEY` from [Google AI Studio](https://aistud
 streamlit run app.py
 ```
 
-## ⚙️ Configuration
+##  Configuration
 Customize the correction logic in `config/rules.json`:
 ```json
 [
@@ -48,10 +48,10 @@ Customize the correction logic in `config/rules.json`:
 ```
 *Note: A `rules_sample.json` is provided as a starting point.*
 
-## 🤝 Contributing
+##  Contributing
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
 
-## 📄 License
+##  License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
