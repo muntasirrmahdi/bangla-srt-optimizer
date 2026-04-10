@@ -10,7 +10,7 @@ BATCH_SIZE = 20
 
 st.set_page_config(page_title="Bangla SRT Optimizer", layout="wide")
 
-st.title("⚡ Bangla SRT Optimizer")
+st.title("Bangla SRT Optimizer")
 st.markdown(
     "Professional AI-powered tool to optimize Bengali subtitle files. Corrects spelling, pronunciation, and contextual errors while maintaining 100% timestamp integrity."
 )

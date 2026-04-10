@@ -1,4 +1,4 @@
-# ⚡ Bangla SRT Optimizer
+# Bangla SRT Optimizer
 
 An AI-powered professional tool to optimize and correct Bengali subtitle (SRT) files. Built with Python, Streamlit, and Google Gemini.
 
