@@ -1,121 +1,89 @@
 import streamlit as st
 import pysrt
-import google.generativeai as genai
 import os
-import re
-import json
+from core.ai import get_ai_model, get_ai_corrected_text
+from core.processor import load_rules, apply_hardcoded_fixes, validate_srt
 
-# Security: Load API Key from environment variable
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+# Constants
+RULES_PATH = os.path.join(os.path.dirname(__file__), "config", "rules.json")
+BATCH_SIZE = 20
 
-if not GEMINI_API_KEY:
-    st.error("Missing GEMINI_API_KEY environment variable. Please set it and restart.")
-    st.stop()
+st.set_page_config(page_title="Bangla SRT Optimizer", layout="wide")
 
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-3-flash-preview")
-
-st.set_page_config(layout="wide")
-
-st.title("Bangla SRT Optimizer")
+st.title("⚡ Bangla SRT Optimizer")
 st.markdown(
-    "Upload your podcast subtitle file. AI will automatically correct spelling, pronunciation, and contextual errors while strictly maintaining timestamps."
+    "Professional AI-powered tool to optimize Bengali subtitle files. Corrects spelling, pronunciation, and contextual errors while maintaining 100% timestamp integrity."
 )
 
-uploaded_file = st.file_uploader("Upload your SRT file here", type="srt")
+# Sidebar for configuration
+with st.sidebar:
+    st.header("⚙️ Configuration")
+    batch_size = st.slider("Batch Size", min_value=5, max_value=50, value=BATCH_SIZE)
+    st.info("Larger batches are faster but might lose AI context.")
 
-# Load fixes from config file (Your 'Special Sauce')
-RULES_PATH = os.path.join(os.path.dirname(__file__), "config", "rules.json")
-if os.path.exists(RULES_PATH):
-    with open(RULES_PATH, "r", encoding="utf-8") as f:
-        SPECIFIC_BENGALI_FIXES = json.load(f)
-else:
-    SPECIFIC_BENGALI_FIXES = []
+# Initialize Model
+model = get_ai_model()
+if not model:
+    st.error("⚠️ GEMINI_API_KEY not found. Please set it in your environment or .env file.")
+    st.stop()
 
-SPECIFIC_BENGALI_FIXES.sort(key=lambda x: len(x[0]), reverse=True)
-
-
-def apply_hardcoded_fixes(text: str) -> str:
-    for wrong, correct in SPECIFIC_BENGALI_FIXES:
-        text = text.replace(wrong, correct)
-
-    text = re.sub(r"  +", " ", text)
-    text = re.sub(r" [,।]", lambda m: m.group(0).strip(), text)
-    return text.strip()
-
-
-def get_ai_corrected_text(segments: list[str]) -> list[str]:
-    original_text = "\n".join([f"SEG_{j + 1}: {s}" for j, s in enumerate(segments)])
-
-    prompt = f"""
-    You are an expert Bengali podcast editor. Your task is to accurately correct the following script segments.
-    
-    Correction Rules:
-    - Provide exactly one corrected line for each input line.
-    - The output format MUST be 'SEG_number: corrected text'.
-    - Correct spelling and pronunciation errors (e.g., উট -> উড, তিতা দি -> ইত্যাদি, মাঠায় -> মাথায়)।
-    - Do not skip or merge any lines. There must be exactly {len(segments)} lines in the output.
-
-    Input Segments:
-    {original_text}
-    """
-
-    try:
-        response = model.generate_content(prompt)
-        lines = response.text.strip().split("\n")
-
-        corrected_dict = {}
-        for line in lines:
-            match = re.match(r"SEG_(\d+):\s*(.*)", line.strip())
-            if match:
-                idx = int(match.group(1)) - 1
-                corrected_dict[idx] = match.group(2)
-
-        result = []
-        for i in range(len(segments)):
-            result.append(corrected_dict.get(i, segments[i]))
-
-        if len(corrected_dict) != len(segments):
-            st.warning(
-                f"Received {len(corrected_dict)} out of {len(segments)} lines from AI. Missing lines were kept unchanged."
-            )
-
-        return result
-    except Exception as e:
-        st.error(f"Error fetching corrected text from AI: {e}")
-        return segments
-
+uploaded_file = st.file_uploader("Upload your SRT file", type="srt")
 
 if uploaded_file is not None:
     content = uploaded_file.read().decode("utf-8")
     subs = pysrt.from_string(content)
+    
+    is_valid, msg = validate_srt(subs)
+    if not is_valid:
+        st.error(msg)
+        st.stop()
 
-    st.write(f"Total subtitle blocks: {len(subs)}")
+    st.success(f"Successfully loaded {len(subs)} subtitle blocks.")
 
-    if st.button("Process and Correct Subtitles"):
+    if st.button("Process & Optimize Subtitles"):
         progress_bar = st.progress(0)
-        batch_size = 20
+        status_text = st.empty()
+        
+        # Load rules
+        rules = load_rules(RULES_PATH)
+        
         corrected_subs = []
+        total_batches = (len(subs) + batch_size - 1) // batch_size
+
         for i in range(0, len(subs), batch_size):
+            current_batch_num = i // batch_size + 1
+            status_text.text(f"Processing batch {current_batch_num}/{total_batches}...")
+            
             batch = subs[i : i + batch_size]
             text_segments = [s.text for s in batch]
 
-            ai_contextual_corrected_segments = get_ai_corrected_text(text_segments)
+            try:
+                # 1. AI Contextual Correction
+                ai_corrected = get_ai_corrected_text(text_segments, model)
 
-            final_validated_segments = [
-                apply_hardcoded_fixes(s_text)
-                for s_text in ai_contextual_corrected_segments
-            ]
+                # 2. Final Hardcoded Polish (Overrides AI hallucinations)
+                final_segments = [
+                    apply_hardcoded_fixes(s_text, rules)
+                    for s_text in ai_corrected
+                ]
 
-            for j, s_obj in enumerate(batch):
-                if j < len(final_validated_segments):
-                    s_obj.text = final_validated_segments[j]
+                for j, s_obj in enumerate(batch):
+                    if j < len(final_segments):
+                        s_obj.text = final_segments[j]
 
-            corrected_subs.extend(batch)
+                corrected_subs.extend(batch)
+            except Exception as e:
+                st.error(f"Error in batch {current_batch_num}: {e}")
+                # Fallback to original for this batch
+                corrected_subs.extend(batch)
+
             progress = min(1.0, (i + batch_size) / len(subs))
             progress_bar.progress(progress)
 
-        new_filename = "optimized_" + uploaded_file.name
+        status_text.text("Optimization complete!")
+        
+        # Save to a new file
+        new_filename = f"optimized_{uploaded_file.name}"
         temp_filepath = os.path.join("/tmp", new_filename)
 
         for idx, s_obj in enumerate(corrected_subs):
@@ -123,20 +91,23 @@ if uploaded_file is not None:
 
         pysrt.SubRipFile(corrected_subs).save(temp_filepath, encoding="utf-8")
 
-        st.success("Correction complete! Download the file using the button below.")
+        st.divider()
+        st.success("🎉 Processed successfully! Click below to download.")
         with open(temp_filepath, "rb") as file:
             st.download_button(
-                label="Download Optimized SRT",
+                label="📥 Download Optimized SRT",
                 data=file,
                 file_name=new_filename,
                 mime="text/plain",
             )
 
-        st.subheader("Corrected Subtitle Samples:")
-        sample_count = 5
-        for i in range(min(sample_count, len(corrected_subs))):
-            st.write(f"**Original {subs[i].index}:** {subs[i].text}")
-            st.write(
-                f"**Corrected {corrected_subs[i].index}:** {corrected_subs[i].text}"
-            )
-            st.write("---")
+        # Show preview
+        st.subheader("👀 Preview (First 5 Blocks)")
+        for i in range(min(5, len(corrected_subs))):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.caption(f"Original {i+1}")
+                st.text(subs[i].text)
+            with col2:
+                st.caption(f"Optimized {i+1}")
+                st.text(corrected_subs[i].text)

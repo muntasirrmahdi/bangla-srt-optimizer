@@ -1,25 +1,58 @@
-# Bangla SRT Optimizer
+# ⚡ Bangla SRT Optimizer
 
-An AI-powered tool to optimize and correct Bengali subtitle (SRT) files while maintaining 100% timestamp accuracy.
+An AI-powered professional tool to optimize and correct Bengali subtitle (SRT) files. Built with Python, Streamlit, and Google Gemini.
 
-## Features
-- **Contextual AI Correction**: Uses Google Gemini to fix spelling, phonetic errors, and grammatical flow.
-- **1:1 Timestamp Mapping**: Uses a proprietary segment tagging system to ensure zero timestamp drift.
-- **Custom Rule Support**: Hardcoded replacement rules for consistent terminology (e.g., industry-specific terms).
+[![GitHub license](https://img.shields.io/github/license/muntasirrmahdi/bangla-srt-optimizer)](https://github.com/muntasirrmahdi/bangla-srt-optimizer/blob/main/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/muntasirrmahdi/bangla-srt-optimizer)](https://github.com/muntasirrmahdi/bangla-srt-optimizer/stargazers)
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
 
-## Setup
-1. Clone the repository.
-2. Create a virtual environment: `python -m venv venv`
-3. Activate it: `source venv/bin/activate`
-4. Install dependencies: `pip install -r requirements.txt`
-5. Set your Gemini API Key: `export GEMINI_API_KEY='your_api_key_here'`
-6. Run the app: `streamlit run app.py`
+## 🎯 The Problem
+Manual correction of Bengali podcast subtitles can take 3-4 hours per episode due to phonetic errors, spelling mistakes, and contextual nuances (e.g., "উট" vs "উড"). This tool reduces that work to minutes while ensuring 100% timestamp integrity.
 
-## Configuration
-Add your specific replacement rules to `config/rules.json` in the following format:
-\`\`\`json
+## ✨ Features
+- **Contextual Intelligence**: Detects and fixes industry-specific terms (e.g., Furniture/Metal industry context).
+- **1:1 Timestamp Mapping**: Proprietary segment tagging (`SEG_n`) prevents AI from merging lines, ensuring zero drift.
+- **Hybrid Correction Engine**: Combines hardcoded linguistic rules with LLM reasoning for maximum accuracy.
+- **Privacy-First**: Your proprietary correction rules can be kept locally while using the shared engine.
+
+## 🚀 Quick Start
+
+### 1. Setup Environment
+```bash
+git clone https://github.com/muntasirrmahdi/bangla-srt-optimizer.git
+cd bangla-srt-optimizer
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### 2. Configure Secrets
+Create a `.env` file from the template:
+```bash
+cp .env.example .env
+```
+Edit `.env` and add your `GEMINI_API_KEY` from [Google AI Studio](https://aistudio.google.com/).
+
+### 3. Run the App
+```bash
+streamlit run app.py
+```
+
+## ⚙️ Configuration
+Customize the correction logic in `config/rules.json`:
+```json
 [
     ["wrong_word", "correct_word"],
-    ["phonetic_error", "actual_meaning"]
+    ["phonetic_mistake", "intended_meaning"]
 ]
-\`\`\`
+```
+*Note: A `rules_sample.json` is provided as a starting point.*
+
+## 🤝 Contributing
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+
+## 📄 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+Built by [Muntasir Mahdi](https://learnwithmuntasir.com)
