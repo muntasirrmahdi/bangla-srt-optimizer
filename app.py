@@ -1,10 +1,13 @@
 import streamlit as st
 import pysrt
 import os
+import time
+from dotenv import load_dotenv
 from core.ai import get_ai_model, get_ai_corrected_text
 from core.processor import load_rules, apply_hardcoded_fixes, validate_srt
 
-# Constants
+load_dotenv()
+
 RULES_PATH = os.path.join(os.path.dirname(__file__), "config", "rules.json")
 BATCH_SIZE = 20
 
@@ -20,11 +23,17 @@ with st.sidebar:
     st.header("⚙️ Configuration")
     batch_size = st.slider("Batch Size", min_value=5, max_value=50, value=BATCH_SIZE)
     st.info("Larger batches are faster but might lose AI context.")
+    
+    st.divider()
+    api_key_input = st.text_input("Gemini API Key (Optional if in .env)", type="password")
 
 # Initialize Model
+if api_key_input:
+    os.environ["GEMINI_API_KEY"] = api_key_input
+
 model = get_ai_model()
 if not model:
-    st.error("⚠️ GEMINI_API_KEY not found. Please set it in your environment or .env file.")
+    st.error("⚠️ GEMINI_API_KEY not found. Please provide it in the sidebar or .env file.")
     st.stop()
 
 uploaded_file = st.file_uploader("Upload your SRT file", type="srt")
@@ -72,6 +81,7 @@ if uploaded_file is not None:
                         s_obj.text = final_segments[j]
 
                 corrected_subs.extend(batch)
+                time.sleep(2)
             except Exception as e:
                 st.error(f"Error in batch {current_batch_num}: {e}")
                 # Fallback to original for this batch
@@ -82,26 +92,18 @@ if uploaded_file is not None:
 
         status_text.text("Optimization complete!")
         
-        # Save to a new file
         new_filename = f"optimized_{uploaded_file.name}"
-        temp_filepath = os.path.join("/tmp", new_filename)
-
-        for idx, s_obj in enumerate(corrected_subs):
-            s_obj.index = idx + 1
-
-        pysrt.SubRipFile(corrected_subs).save(temp_filepath, encoding="utf-8")
+        srt_content = "\n".join([str(sub) for sub in corrected_subs])
 
         st.divider()
         st.success("🎉 Processed successfully! Click below to download.")
-        with open(temp_filepath, "rb") as file:
-            st.download_button(
-                label="📥 Download Optimized SRT",
-                data=file,
-                file_name=new_filename,
-                mime="text/plain",
-            )
+        st.download_button(
+            label="📥 Download Optimized SRT",
+            data=srt_content,
+            file_name=new_filename,
+            mime="text/plain",
+        )
 
-        # Show preview
         st.subheader("👀 Preview (First 5 Blocks)")
         for i in range(min(5, len(corrected_subs))):
             col1, col2 = st.columns(2)

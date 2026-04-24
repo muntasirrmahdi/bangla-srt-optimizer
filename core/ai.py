@@ -1,16 +1,24 @@
-import google.generativeai as genai
+from google import genai
+from google.genai import types
+from google.genai.errors import APIError
 import os
 import re
 import time
+import streamlit as st
 
 def get_ai_model():
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
         return None
-    genai.configure(api_key=key)
-    return genai.GenerativeModel("gemini-3-flash-preview")
+    
+    try:
+        client = genai.Client(api_key=key)
+        return client
+    except Exception as e:
+        st.error(f"Failed to initialize Gemini Client: {e}")
+        return None
 
-def get_ai_corrected_text(segments: list[str], model, max_retries=3) -> list[str]:
+def get_ai_corrected_text(segments: list[str], client, max_retries=3) -> list[str]:
     """Sends text segments to Gemini for AI-driven correction with retry logic."""
     original_text = "\n".join([f"SEG_{j + 1}: {s}" for j, s in enumerate(segments)])
 
@@ -29,7 +37,11 @@ def get_ai_corrected_text(segments: list[str], model, max_retries=3) -> list[str
 
     for attempt in range(max_retries):
         try:
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model="gemini-3.0-flash",
+                contents=prompt
+            )
+            
             lines = response.text.strip().split("\n")
 
             corrected_dict = {}
@@ -45,8 +57,14 @@ def get_ai_corrected_text(segments: list[str], model, max_retries=3) -> list[str
                 result.append(corrected_dict.get(i, segments[i]))
             
             return result
+        except APIError as e:
+            if "429" in str(e) or attempt < max_retries - 1:
+                time.sleep(2 ** attempt)  # Exponential backoff
+            else:
+                raise e
         except Exception as e:
             if attempt == max_retries - 1:
                 raise e
             time.sleep(2 ** attempt)  # Exponential backoff
+            
     return segments
