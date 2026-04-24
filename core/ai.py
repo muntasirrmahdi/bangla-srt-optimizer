@@ -38,7 +38,7 @@ def get_ai_corrected_text(segments: list[str], client, max_retries=3) -> list[st
     for attempt in range(max_retries):
         try:
             response = client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 contents=prompt
             )
             
