@@ -1,4 +1,4 @@
 python-dotenv
 streamlit
 pysrt
-google-generativeai
+google-genai
